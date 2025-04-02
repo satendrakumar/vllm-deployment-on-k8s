@@ -1,0 +1,108 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    deployment.kubernetes.io/revision: "6"
+    meta.helm.sh/release-name: vllm-server
+    meta.helm.sh/release-namespace: vllm-server
+  generation: 6
+  labels:
+    app.kubernetes.io/instance: vllm-server
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: vllm-server
+    app.kubernetes.io/version: 0.1.0
+    helm.sh/chart: boilerplate-0.1.0
+  name: vllm-server
+  namespace: services-dev
+
+spec:
+  minReadySeconds: 160
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: vllm-server
+      app.kubernetes.io/name: vllm-server
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        checksum/secret: cd2c3c75c620f6ecca4e9f911db497702507b195961c3233b04c77dcc25286f2
+      creationTimestamp: null
+      labels:
+        app.kubernetes.io/instance: vllm-server
+        app.kubernetes.io/name: vllm-server
+    spec:
+      initContainers:
+      - name: download-model
+        image: google/cloud-sdk:alpine
+        command: ["sh", "-c", "gsutil -m cp -r gs://embeddings-model/huggingface/bge-m3 /models"]
+        volumeMounts:
+        - name: model-storage
+          mountPath: /models
+      containers:
+      - name: vllm-container
+        image: asia-south1-docker.pkg.dev/hbl-dev-gcp-gen-ai-prj-spk-5a/gen-ai-docker-repo/vllm-cpu-ubi9:v0.8.2
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        resources:
+          limits:
+            cpu: "2"
+            memory: 12Gi
+          requests:
+            cpu: "2"
+            memory: 8Gi
+        readinessProbe:
+          failureThreshold: 4
+          httpGet:
+            path: /DEV/vllm/health
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 20
+          successThreshold: 1
+          timeoutSeconds: 10
+        livenessProbe:
+          failureThreshold: 4
+          httpGet:
+            path: /DEV/vllm/health
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 60
+          successThreshold: 1
+          timeoutSeconds: 10800
+        securityContext: { }
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        args:
+        - "--model"
+        - "/models/bge-m3"
+        - "--served-model-name"
+        - "BAAI/bge-m3"
+        - "--root-path"
+        - "/DEV/vllm"
+        - "--port"
+        - "8080"
+        volumeMounts:
+        - name: model-storage
+          mountPath: /models
+      volumes:
+      - name: model-storage
+        emptyDir: {}
+      dnsPolicy: ClusterFirst
+      hostname: boilerplate
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: { }
+      serviceAccount: ksa-genai
+      serviceAccountName: ksa-genai
+      terminationGracePeriodSeconds: 30
