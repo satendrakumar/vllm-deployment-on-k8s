@@ -13,7 +13,7 @@ metadata:
     app.kubernetes.io/version: 0.1.0
     helm.sh/chart: boilerplate-0.1.0
   name: vllm-server
-  namespace: services-dev
+  namespace: staging
 
 spec:
   minReadySeconds: 160
@@ -41,13 +41,13 @@ spec:
       initContainers:
       - name: download-model
         image: google/cloud-sdk:alpine
-        command: ["sh", "-c", "gsutil -m cp -r gs://embeddings-model/huggingface/bge-m3 /models"]
+        command: ["sh", "-c", "gsutil -m cp -r gs://embeddings-models/huggingface/bge-m3 /models"]
         volumeMounts:
         - name: model-storage
           mountPath: /models
       containers:
       - name: vllm-container
-        image: asia-south1-docker.pkg.dev/hbl-dev-gcp-gen-ai-prj-spk-5a/gen-ai-docker-repo/vllm-cpu-ubi9:v0.8.2
+        image: satendra/vllm-cpu:v0.8.3
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8080
@@ -63,7 +63,7 @@ spec:
         readinessProbe:
           failureThreshold: 4
           httpGet:
-            path: /DEV/vllm/health
+            path: /staging/vllm/health
             port: http
             scheme: HTTP
           initialDelaySeconds: 10
@@ -73,7 +73,7 @@ spec:
         livenessProbe:
           failureThreshold: 4
           httpGet:
-            path: /DEV/vllm/health
+            path: /staging/vllm/health
             port: http
             scheme: HTTP
           initialDelaySeconds: 10
@@ -81,7 +81,7 @@ spec:
           successThreshold: 1
           timeoutSeconds: 10800
         securityContext: { }
-        terminationMessagePath: /dev/termination-log
+        terminationMessagePath: /staging/termination-log
         terminationMessagePolicy: File
         args:
         - "--model"
