@@ -14,7 +14,7 @@ metadata:
     app.kubernetes.io/version: 0.1.0
     helm.sh/chart: boilerplate-0.1.0
   name: vllm-server
-  namespace: services-dev
+  namespace: staging
 
 
 spec:
